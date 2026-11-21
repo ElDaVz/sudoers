@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>sudoers.os</title>
+<meta name="description" content="sudoers.os: comunidad Linux de Guatemala. Contenido, memes de terminal y el desarrollo de nuestra propia distro.">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Pantalla de fósforo: todo es una sesión de terminal. Barra tipo tmux arriba, paneles con borde de caja, una shell interactiva al centro. */
+:root {
+  --bg: #040a06;
+  --pane: #07120b;
+  --phos: #3dff7f;
+  --dim: #1d7a40;
+  --faint: #0f3a20;
+  --amber: #ffb22e;
+  --red: #ff4d4d;
+  --text: #c6f5d6;
+  --f-pixel: "VT323", "Lucida Console", monospace;
+  --f-mono: "IBM Plex Mono", "Cascadia Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.65 var(--f-mono); }
+::selection { background: var(--phos); color: var(--bg); }
+a { color: var(--phos); }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 1px dashed var(--amber); outline-offset: 3px; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.glow { color: var(--phos); text-shadow: 0 0 6px rgba(61,255,127,.55), 0 0 18px rgba(61,255,127,.25); }
+.amber { color: var(--amber); }
+.dim { color: var(--dim); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* CRT */
+.crt::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px); }
+.crt::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 51;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%); }
+
+/* barra tmux */
+.tmux { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 40; background: var(--phos); color: var(--bg); font-size: 13px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 41; background: var(--phos); }
+.tmux .wrap { display: flex; align-items: center; gap: 4px; padding-block: 3px; white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+.tmux b { padding: 0 8px; background: var(--bg); color: var(--phos); }
+.tmux a { color: var(--bg); text-decoration: none; padding: 0 8px; }
+.tmux a:hover, .tmux a.cur { background: var(--bg); color: var(--phos); }
+.tmux .right { margin-left: auto; padding-left: 16px; font-variant-numeric: tabular-nums; }
+
+/* hero */
+.hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--faint); }
+#rain { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .22; }
+.hero .wrap { position: relative; padding-block: 64px 56px; display: grid; gap: 22px; }
+.boot { font-size: 13px; color: var(--dim); margin: 0; white-space: pre-wrap; min-height: 6.6em; }
+.boot .ok { color: var(--phos); }
+#logo { margin: 0; font-family: var(--f-mono); font-size: clamp(6.5px, 1.55vw, 15px); line-height: 1.05; overflow: hidden; position: relative; }
+#logo.glitch { animation: glitch .35s steps(2) 1; }
+@keyframes glitch {
+  0% { transform: translate(0); clip-path: inset(0 0 0 0); }
+  25% { transform: translate(-4px, 1px); clip-path: inset(20% 0 45% 0); text-shadow: 3px 0 var(--red), -3px 0 #4de1ff; }
+  50% { transform: translate(3px, -1px); clip-path: inset(60% 0 5% 0); }
+  75% { transform: translate(-2px); clip-path: inset(5% 0 70% 0); text-shadow: -3px 0 var(--red), 3px 0 #4de1ff; }
+  100% { transform: translate(0); clip-path: inset(0 0 0 0); }
+}
+.tag { font-family: var(--f-pixel); font-size: clamp(26px, 4vw, 40px); line-height: 1.1; margin: 0; }
+.tag .cur { display: inline-block; width: .55em; height: .9em; background: var(--phos); vertical-align: -.08em; animation: blink 1s steps(1) infinite; box-shadow: 0 0 10px var(--phos); }
+@keyframes blink { 50% { opacity: 0; } }
+.sub { margin: 0; max-width: 62ch; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+.btn { font: 600 15px var(--f-mono); padding: 10px 16px; border: 1px solid var(--phos); color: var(--phos); background: transparent; text-decoration: none; cursor: pointer; transition: background .12s, color .12s; }
+.btn:hover { background: var(--phos); color: var(--bg); }
+.btn.solid { background: var(--phos); color: var(--bg); box-shadow: 0 0 18px rgba(61,255,127,.35); }
+.btn.solid:hover { background: var(--amber); border-color: var(--amber); }
+
+/* paneles */
+section { padding-block: 60px 20px; scroll-margin-top: 40px; }
+.pane { position: relative; border: 1px solid var(--dim); background: var(--pane); padding: 30px 24px 24px; }
+.pane > .title { position: absolute; top: -.8em; left: 16px; background: var(--bg); padding: 0 8px; color: var(--phos); font-weight: 600; }
+.pane > .title::before { content: "┤ "; color: var(--dim); }
+.pane > .title::after { content: " ├"; color: var(--dim); }
+h2 { font-family: var(--f-pixel); font-weight: 400; font-size: clamp(34px, 5vw, 52px); line-height: 1; margin: 0 0 8px; }
+.cmd { color: var(--dim); margin: 0 0 14px; }
+.cmd::before { content: "invitado@sudoers:~$ "; color: var(--phos); }
+
+/* shell interactiva */
+#shell { cursor: text; }
+#scroll { height: 380px; overflow-y: auto; scrollbar-color: var(--dim) transparent; }
+@media (max-width: 560px) { #scroll { font-size: 12.5px; } }
+#out { white-space: pre-wrap; word-break: break-word; margin: 0; }
+#out .p { color: var(--phos); }
+#out .err { color: var(--red); }
+#out .warn { color: var(--amber); }
+#out .hi { color: var(--phos); }
+.line { display: flex; gap: 0; }
+.line .p { color: var(--phos); white-space: pre; }
+#cmd { flex: 1; min-width: 0; background: transparent; border: 0; color: var(--text); font: inherit; caret-color: var(--phos); padding: 0; }
+#cmd:focus { outline: none; }
+.hint { margin-top: 12px; color: var(--dim); font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px; }
+.hint button { font: inherit; color: var(--phos); background: transparent; border: 1px solid var(--faint); padding: 2px 8px; cursor: pointer; }
+.hint button:hover { border-color: var(--phos); }
+
+/* ls -la */
+.ls .scrollx { overflow-x: auto; }
+.ls table { border-collapse: collapse; width: 100%; min-width: 640px; }
+.ls td { padding: 6px 14px 6px 0; vertical-align: top; white-space: nowrap; }
+.ls td.desc { white-space: normal; color: var(--text); }
+.ls tr:hover td { background: rgba(61,255,127,.05); }
+.ls .perm { color: var(--dim); }
+.ls .dir { color: #4de1ff; font-weight: 600; }
+.ls .file { color: var(--phos); font-weight: 600; }
+
+/* make distro */
+.make { margin: 0; white-space: pre-wrap; }
+.make .ok { color: var(--phos); }
+.make .wip { color: var(--amber); }
+.spin { display: inline-block; width: 1ch; color: var(--amber); }
+.progress { margin-top: 16px; color: var(--amber); white-space: pre; overflow: hidden; }
+
+/* final */
+.final { text-align: left; padding-bottom: 70px; }
+.big { font-family: var(--f-pixel); font-size: clamp(44px, 9vw, 96px); line-height: .95; margin: 6px 0 18px; word-break: break-word; }
+footer { border-top: 1px solid var(--faint); padding-block: 22px 28px; color: var(--dim); font-size: 13px; }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  html { scroll-behavior: auto; }
+  #rain { display: none; }
+}
+</style>
+</head>
+<body class="crt">
+
+<div class="tmux">
+  <nav class="wrap" aria-label="Secciones">
+    <b>[sudoers]</b>
+    <a href="#inicio" class="cur">0:inicio*</a>
+    <a href="#shell-sec">1:shell</a>
+    <a href="#contenido">2:contenido</a>
+    <a href="#distro">3:distro</a>
+    <a href="https://www.instagram.com/sudoers.os/" target="_blank" rel="noopener">4:instagram</a>
+    <span class="right" id="clock">GT --:--:--</span>
+  </nav>
+</div>
+
+<main id="inicio">
+  <header class="hero">
+    <canvas id="rain" aria-hidden="true"></canvas>
+    <div class="wrap">
+      <pre class="boot" id="boot" aria-hidden="true"></pre>
+      <h1 class="sr">sudoers.os</h1>
+      <pre id="logo" class="glow" aria-hidden="true"></pre>
+      <p class="tag glow">&gt; comunidad linux // guatemala<span class="cur"></span></p>
+      <p class="sub">Contenido de Linux y software libre, memes de terminal y el desarrollo de nuestra propia distro. Todo desde Guatemala, todo en <span class="glow">@sudoers.os</span>.</p>
+      <div class="actions">
+        <a class="btn solid" href="https://www.instagram.com/sudoers.os/" target="_blank" rel="noopener">[ seguir en instagram ]</a>
+        <a class="btn" href="#shell-sec">[ abrir la shell ]</a>
+      </div>
+    </div>
+  </header>
+
+  <section id="shell-sec">
+    <div class="wrap">
+      <h2 class="glow">Entra a la shell.</h2>
+      <p class="cmd">echo "escribe help y presiona enter"</p>
+      <div class="pane" id="shell">
+        <span class="title">bash — invitado@sudoers</span>
+        <div id="scroll">
+          <pre id="out"></pre>
+          <label class="line" for="cmd"><span class="p">invitado@sudoers:~$ </span><input id="cmd" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Escribe un comando"></label>
+        </div>
+      </div>
+      <div class="hint">prueba:
+        <button type="button" data-run="neofetch">neofetch</button>
+        <button type="button" data-run="cat memes.txt">cat memes.txt</button>
+        <button type="button" data-run="sudo su">sudo su</button>
+        <button type="button" data-run="vim">vim</button>
+        <button type="button" data-run="help">help</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="contenido">
+    <div class="wrap">
+      <h2 class="glow">Lo que publicamos.</h2>
+      <p class="cmd">ls -la ~/sudoers.os</p>
+      <div class="pane ls">
+        <span class="title">~/sudoers.os</span>
+        <div class="scrollx"><table>
+          <tr><td class="perm">drwxr-xr-x</td><td class="dim">gt</td><td class="dir">contenido/</td><td class="desc">Tips, comandos y software libre explicado fácil.</td></tr>
+          <tr><td class="perm">-rw-r--r--</td><td class="dim">gt</td><td class="file">memes.txt</td><td class="desc">Humor de terminal. Si alguna vez saliste de Vim a la fuerza, son para ti.</td></tr>
+          <tr><td class="perm">drwxr-x---</td><td class="dim">gt</td><td class="dir">distro/</td><td class="desc">Nuestra propia distro, construida en público. <span class="amber">[en desarrollo]</span></td></tr>
+          <tr><td class="perm">lrwxrwxrwx</td><td class="dim">gt</td><td class="file">instagram</td><td class="desc">→ <a href="https://www.instagram.com/sudoers.os/" target="_blank" rel="noopener">instagram.com/sudoers.os</a></td></tr>
+        </table></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="distro">
+    <div class="wrap">
+      <h2 class="glow">Estamos compilando una distro.</h2>
+      <p class="cmd">make distro</p>
+      <div class="pane">
+        <span class="title">build.log</span>
+<pre class="make"><span class="ok">[ OK ]</span> Juntar gente que ama Linux
+<span class="ok">[ OK ]</span> Elegir nombre: sudoers.os
+<span class="ok">[ OK ]</span> Tomar mucho café
+<span class="wip">[ <span class="spin" id="spin">|</span>  ]</span> Escribir código, romper cosas, arreglar cosas
+<span class="dim">[    ]</span> Primera versión pública</pre>
+        <div class="progress" id="prog" aria-hidden="true">[>                             ]</div>
+        <p style="margin:14px 0 0">Cada avance, error y decisión sale primero en <a href="https://www.instagram.com/sudoers.os/" target="_blank" rel="noopener">@sudoers.os</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="final">
+    <div class="wrap">
+      <p class="cmd">sudo usermod -aG sudoers $USER</p>
+      <div class="big glow">@sudoers.os</div>
+      <p style="max-width:56ch;margin:0 0 22px">No importa tu nivel. Todos empezamos con nuestra primera terminal. Síguenos y entra al archivo sudoers.</p>
+      <a class="btn solid" href="https://www.instagram.com/sudoers.os/" target="_blank" rel="noopener">[ seguir en instagram ]</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>sudoers.os · comunidad linux guatemala</span>
+    <span>exit 0</span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const IG = 'https://www.instagram.com/sudoers.os/';
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // logo ASCII (ANSI Shadow)
+  const L = {
+    S: ['███████╗','██╔════╝','███████╗','╚════██║','███████║','╚══════╝'],
+    U: ['██╗   ██╗','██║   ██║','██║   ██║','██║   ██║','╚██████╔╝',' ╚═════╝ '],
+    D: ['██████╗ ','██╔══██╗','██║  ██║','██║  ██║','██████╔╝','╚═════╝ '],
+    O: [' ██████╗ ','██╔═══██╗','██║   ██║','██║   ██║','╚██████╔╝',' ╚═════╝ '],
+    E: ['███████╗','██╔════╝','█████╗  ','██╔══╝  ','███████╗','╚══════╝'],
+    R: ['██████╗ ','██╔══██╗','██████╔╝','██╔══██╗','██║  ██║','╚═╝  ╚═╝'],
+  };
+  const word = 'SUDOERS';
+  const logo = document.getElementById('logo');
+  logo.textContent = [0,1,2,3,4,5].map(r => [...word].map(c => L[c][r]).join('')).join('\n');
+  if (!reduce) setInterval(() => {
+    logo.classList.remove('glitch'); void logo.offsetWidth; logo.classList.add('glitch');
+  }, 4200);
+
+  // arranque
+  const bootLines = [
+    '[    0.000000] Linux version sudoers.os (gt@guatemala)',
+    '[    0.004211] Command line: BOOT_IMAGE=/comunidad quiet splash',
+    '[ <span class="ok">OK</span> ] Montando /home/guatemala',
+    '[ <span class="ok">OK</span> ] Iniciando memes.service',
+    '[ <span class="ok">OK</span> ] Alcanzado objetivo: comunidad.target',
+  ];
+  const boot = document.getElementById('boot');
+  if (reduce) boot.innerHTML = bootLines.join('\n');
+  else bootLines.forEach((l, i) => setTimeout(() => { boot.innerHTML += (i ? '\n' : '') + l; }, 160 * i));
+
+  // reloj de Guatemala
+  const clock = document.getElementById('clock');
+  const tick = () => {
+    try {
+      clock.textContent = 'GT ' + new Date().toLocaleTimeString('es-GT', { timeZone: 'America/Guatemala', hour12: false });
+    } catch (e) { clock.textContent = 'GT ' + new Date().toTimeString().slice(0, 8); }
+  };
+  tick(); setInterval(tick, 1000);
+
+  // pestaña activa de tmux
+  const tabs = [...document.querySelectorAll('.tmux a[href^="#"]')];
+  const secs = tabs.map(a => document.querySelector(a.getAttribute('href')));
+  addEventListener('scroll', () => {
+    let k = 0;
+    secs.forEach((s, i) => { if (s.getBoundingClientRect().top < 120) k = i; });
+    tabs.forEach((a, i) => {
+      a.classList.toggle('cur', i === k);
+      a.textContent = a.textContent.replace(/\*$/, '') + (i === k ? '*' : '');
+    });
+  }, { passive: true });
+
+  // lluvia de caracteres
+  const cv = document.getElementById('rain');
+  if (!reduce && cv.getContext) {
+    const ctx = cv.getContext('2d');
+    const chars = '01sudo$#~/><|{}[];:01';
+    let cols = [], fs = 16;
+    const size = () => {
+      cv.width = cv.offsetWidth; cv.height = cv.offsetHeight;
+      cols = Array(Math.ceil(cv.width / fs)).fill(0).map(() => Math.random() * -40);
+    };
+    size(); addEventListener('resize', size);
+    setInterval(() => {
+      ctx.fillStyle = 'rgba(4,10,6,.12)';
+      ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.fillStyle = '#3dff7f';
+      ctx.font = fs + 'px IBM Plex Mono, monospace';
+      cols.forEach((y, i) => {
+        ctx.fillText(chars[(Math.random() * chars.length) | 0], i * fs, y * fs);
+        cols[i] = y * fs > cv.height && Math.random() > .975 ? 0 : y + 1;
+      });
+    }, 60);
+  }
+
+  // build.log
+  const spin = document.getElementById('spin');
+  const prog = document.getElementById('prog');
+  if (!reduce) {
+    let s = 0, p = 0;
+    setInterval(() => {
+      spin.textContent = '|/-\\'[s++ % 4];
+      p = (p + 1) % 31;
+      prog.textContent = '[' + '='.repeat(p) + '>' + ' '.repeat(30 - p) + '] compilando…';
+    }, 140);
+  }
+
+  // shell interactiva
+  const out = document.getElementById('out');
+  const input = document.getElementById('cmd');
+  const shell = document.getElementById('shell');
+  const scroller = document.getElementById('scroll');
+  const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const print = html => { out.innerHTML += html + '\n'; scroller.scrollTop = scroller.scrollHeight; };
+  const hist = []; let hi = 0; let inVim = false;
+
+  const memes = [
+    'Hay 10 tipos de personas: las que entienden binario y las que no.',
+    '¿Cómo se sale de Vim? No se sale. Vim sale de ti.',
+    '"En mi máquina sí funciona." Perfecto, entonces mandamos tu máquina a producción.',
+    'sudo: el "por favor" de los que tienen poder.',
+    'Mi código no tiene bugs. Tiene features sin documentar.',
+    'Instalé Arch una vez. Todavía no termino de contarlo.',
+    'Chmod 777: la solución de todos los problemas y la causa de los siguientes.',
+  ];
+  let mi = Math.floor(Math.random() * memes.length);
+
+  const C = {
+    help: () => print(
+`comandos disponibles:
+  <span class="hi">whoami</span>         quién eres aquí
+  <span class="hi">ls</span>             qué hay en la comunidad
+  <span class="hi">cat memes.txt</span>  un meme al azar
+  <span class="hi">neofetch</span>       info del sistema
+  <span class="hi">distro</span>         estado de nuestra distro
+  <span class="hi">instagram</span>      dónde encontrarnos
+  <span class="hi">sudo</span> &lt;algo&gt;    inténtalo
+  <span class="hi">vim</span>            bajo tu propio riesgo
+  <span class="hi">date</span>, <span class="hi">uname -a</span>, <span class="hi">echo</span>, <span class="hi">history</span>, <span class="hi">clear</span>`),
+    whoami: () => print('invitado (por ahora). Sigue a <a href="' + IG + '" target="_blank" rel="noopener">@sudoers.os</a> para subir de nivel.'),
+    ls: () => print('<span style="color:#4de1ff">contenido/</span>  memes.txt  <span style="color:#4de1ff">distro/</span>  <span class="hi">instagram@</span>'),
+    'ls -la': () => C.ls(),
+    'cat memes.txt': () => { print(memes[mi]); mi = (mi + 1) % memes.length; },
+    'cat memes': () => C['cat memes.txt'](),
+    memes: () => C['cat memes.txt'](),
+    neofetch: () => print(
+`<span class="hi">    .--.      </span>  <span class="hi">invitado</span>@<span class="hi">sudoers</span>
+<span class="hi">   |o_o |     </span>  ----------------
+<span class="hi">   |:_/ |     </span>  <span class="hi">OS:</span> sudoers.os <span class="warn">(en desarrollo)</span>
+<span class="hi">  //   \\ \\    </span>  <span class="hi">Host:</span> Guatemala
+<span class="hi"> (|     | )   </span>  <span class="hi">Shell:</span> bash
+<span class="hi">/'\\_   _/\`\\   </span>  <span class="hi">Comunidad:</span> Linux GT
+<span class="hi">\\___)=(___/   </span>  <span class="hi">Uptime:</span> desde el primer commit
+                <span class="hi">Instagram:</span> @sudoers.os`),
+    distro: () => print('estado: <span class="warn">en desarrollo</span>\nlos avances salen primero en <a href="' + IG + '" target="_blank" rel="noopener">@sudoers.os</a>'),
+    'cd distro': () => C.distro(),
+    'cd distro/': () => C.distro(),
+    instagram: () => print('→ <a href="' + IG + '" target="_blank" rel="noopener">instagram.com/sudoers.os</a>'),
+    ig: () => C.instagram(),
+    'cd contenido': () => print('tips, comandos y software libre explicado fácil. Todo en <a href="' + IG + '" target="_blank" rel="noopener">@sudoers.os</a>'),
+    date: () => { let d; try { d = new Date().toLocaleString('es-GT', { timeZone: 'America/Guatemala' }); } catch (e) { d = new Date().toString(); } print(d + ' (hora de Guatemala)'); },
+    'uname -a': () => print('Linux sudoers 6.x-gt #1 SMP chapín x86_64 GNU/Linux'),
+    uname: () => print('Linux'),
+    history: () => print(hist.map((h, i) => String(i + 1).padStart(4) + '  ' + esc(h)).join('\n') || ''),
+    clear: () => { out.innerHTML = ''; },
+    pwd: () => print('/home/guatemala/sudoers'),
+    exit: () => print('No hay salida. Bueno, sí: <a href="' + IG + '" target="_blank" rel="noopener">seguirnos</a>.'),
+    vim: () => { inVim = true; print('<span class="warn">-- VIM --</span>  Entraste a Vim. Ahora intenta salir.'); },
+    nano: () => print('nano: buena elección. Nadie te va a juzgar aquí.'),
+    'rm -rf /': () => print('<span class="err">Nel.</span> Aquí cuidamos el sistema.'),
+    'sudo rm -rf /': () => print('<span class="err">Nel.</span> Ni con sudo.'),
+    'sudo make me a sandwich': () => print('Okay. 🥪'),
+    'make me a sandwich': () => print('<span class="err">¿Qué? Hazlo tú.</span>'),
+  };
+
+  function run(raw) {
+    const line = raw.trim();
+    print('<span class="p">invitado@sudoers:~$ </span>' + esc(raw));
+    if (!line) return;
+    hist.push(line); hi = hist.length;
+    if (inVim) {
+      if (/^:(q!?|wq!?|x)$/.test(line)) { inVim = false; print('Saliste de Vim. Eres de los pocos.'); }
+      else print('<span class="warn">-- VIM --</span>  Sigues en Vim. (pista: <span class="hi">:q</span>)');
+      return;
+    }
+    const lc = line.toLowerCase();
+    if (C[lc]) return C[lc]();
+    if (lc.startsWith('echo ')) return print(esc(line.slice(5).replace(/^["']|["']$/g, '')));
+    if (lc.startsWith('sudo')) return print(
+      '[sudo] contraseña para invitado: ********\n' +
+      '<span class="err">invitado no está en el archivo sudoers. Este incidente será reportado.</span>\n' +
+      'Para entrar al archivo sudoers: sigue a <a href="' + IG + '" target="_blank" rel="noopener">@sudoers.os</a>');
+    if (lc.startsWith('cat ')) return print('cat: ' + esc(line.slice(4)) + ': No existe el archivo. Prueba <span class="hi">cat memes.txt</span>');
+    if (lc.startsWith('cd ')) return print('bash: cd: ' + esc(line.slice(3)) + ': No existe el directorio. Prueba <span class="hi">ls</span>');
+    print('<span class="err">bash: ' + esc(line.split(' ')[0]) + ': comando no encontrado.</span> Prueba <span class="hi">help</span>');
+  }
+
+  print('sudoers.os shell 1.0 · escribe <span class="hi">help</span> para empezar');
+
+  const names = Object.keys(C).concat(['echo']);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { run(input.value); input.value = ''; }
+    else if (e.key === 'ArrowUp') { if (hi > 0) input.value = hist[--hi]; e.preventDefault(); }
+    else if (e.key === 'ArrowDown') { if (hi < hist.length) { hi++; input.value = hist[hi] || ''; } e.preventDefault(); }
+    else if (e.key === 'Tab') {
+      e.preventDefault();
+      const v = input.value.toLowerCase();
+      const m = names.filter(n => n.startsWith(v));
+      if (m.length === 1) input.value = m[0];
+      else if (m.length > 1 && v) print('<span class="p">invitado@sudoers:~$ </span>' + esc(input.value) + '\n' + m.join('  '));
+    } else if (e.key === 'l' && e.ctrlKey) { e.preventDefault(); C.clear(); }
+  });
+  shell.addEventListener('click', () => { if (!getSelection().toString()) input.focus({ preventScroll: true }); });
+  document.querySelectorAll('[data-run]').forEach(b => b.addEventListener('click', () => { run(b.dataset.run); input.focus({ preventScroll: true }); }));
+})();
+</script>
+</body>
+</html>
